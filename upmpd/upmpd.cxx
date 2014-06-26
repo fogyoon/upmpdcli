@@ -399,7 +399,7 @@ int main(int argc, char *argv[])
 	string UUID = LibUPnP::makeDevUUID(friendlyname, hwaddr);
 
 	// make uuid file
-	ifstream OpenFile("/tmp/upmpdcliuuid");
+	ofstream OpenFile("/tmp/upmpdcliuuid");
 	SaveFile << UUID;
 	SaveFile.close();
 
