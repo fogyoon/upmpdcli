@@ -24,6 +24,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
+#include <fstream>
 #include <vector>
 #include <functional>
 #include <set>
@@ -396,6 +397,11 @@ int main(int argc, char *argv[])
 
 	// Create unique ID
 	string UUID = LibUPnP::makeDevUUID(friendlyname, hwaddr);
+
+	// make uuid file
+	ifstream OpenFile("/tmp/upmpdcliuuid");
+	SaveFile << UUID;
+	SaveFile.close();
 
 	// Read our XML data to make it available from the virtual directory
 	if (openhome) {
