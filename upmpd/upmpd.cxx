@@ -24,7 +24,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
-//#include <fstream>
+//#include <fstream.h>
 #include <vector>
 #include <functional>
 #include <set>
@@ -306,53 +306,56 @@ int main(int argc, char *argv[])
 	}
 	upnppdebug::Logger::getTheLog("")->setLogLevel(upnppdebug::Logger::LogLevel(loglevel));
 
-    Pidfile pidfile(pidfilename);
+	if (!(op_flags & OPT_u)) {
+	
+		Pidfile pidfile(pidfilename);
 
-	// If started by root, do the pidfile + change uid thing
-	uid_t runas(0);
-	if (geteuid() == 0) {
-		struct passwd *pass = getpwnam(upmpdcliuser.c_str());
-		if (pass == 0) {
-			LOGFAT("upmpdcli won't run as root and user " << upmpdcliuser << 
-				   " does not exist " << endl);
-			return 1;
-		}
-		runas = pass->pw_uid;
+		// If started by root, do the pidfile + change uid thing
+		uid_t runas(0);
+		if (geteuid() == 0) {
+			struct passwd *pass = getpwnam(upmpdcliuser.c_str());
+			if (pass == 0) {
+				LOGFAT("upmpdcli won't run as root and user " << upmpdcliuser << 
+					   " does not exist " << endl);
+				return 1;
+			}
+			runas = pass->pw_uid;
 
-		pid_t pid;
-		if ((pid = pidfile.open()) != 0) {
-			LOGFAT("Can't open pidfile: " << pidfile.getreason() << 
-				   ". Return (other pid?): " << pid << endl);
-			return 1;
-		}
-		if (pidfile.write_pid() != 0) {
-			LOGFAT("Can't write pidfile: " << pidfile.getreason() << endl);
-			return 1;
-		}
-	}
-
-	if ((op_flags & OPT_D)) {
-		if (daemon(1, 0)) {
-			LOGFAT("Daemon failed: errno " << errno << endl);
-			return 1;
-		}
-	}
-
-	if (geteuid() == 0) {
-		// Need to rewrite pid, it may have changed with the daemon call
-		pidfile.write_pid();
-		if (!logfilename.empty() && logfilename.compare("stderr")) {
-			if (chown(logfilename.c_str(), runas, -1) < 0) {
-				LOGERR("chown("<<logfilename<<") : errno : " << errno << endl);
+			pid_t pid;
+			if ((pid = pidfile.open()) != 0) {
+				LOGFAT("Can't open pidfile: " << pidfile.getreason() << 
+					   ". Return (other pid?): " << pid << endl);
+				return 1;
+			}
+			if (pidfile.write_pid() != 0) {
+				LOGFAT("Can't write pidfile: " << pidfile.getreason() << endl);
+				return 1;
 			}
 		}
-		if (setuid(runas) < 0) {
-			LOGFAT("Can't set my uid to " << runas << " current: " << geteuid()
-				   << endl);
-			return 1;
+
+		if ((op_flags & OPT_D)) {
+			if (daemon(1, 0)) {
+				LOGFAT("Daemon failed: errno " << errno << endl);
+				return 1;
+			}
+		}
+
+		if (geteuid() == 0) {
+			// Need to rewrite pid, it may have changed with the daemon call
+			pidfile.write_pid();
+			if (!logfilename.empty() && logfilename.compare("stderr")) {
+				if (chown(logfilename.c_str(), runas, -1) < 0) {
+					LOGERR("chown("<<logfilename<<") : errno : " << errno << endl);
+				}
+			}
+			if (setuid(runas) < 0) {
+				LOGFAT("Can't set my uid to " << runas << " current: " << geteuid()
+					   << endl);
+				return 1;
+			}
 		}
 	}
-
+	
 	// Initialize MPD client object. Retry until it works or power fail.
 	MPDCli *mpdclip = 0;
 	int mpdretrysecs = 2;
@@ -400,17 +403,15 @@ int main(int argc, char *argv[])
 	// Create unique ID
 	string UUID = LibUPnP::makeDevUUID(friendlyname, hwaddr);
 
-	// print uuid
 	if ((op_flags & OPT_u)) {
 		cout << UUID;
 		return 0;
 	}
-
 	// make uuid file
 	//ofstream SaveFile("/tmp/upmpdcliuuid");
 	//SaveFile << UUID;
 	//SaveFile.close();
-
+	
 	// Read our XML data to make it available from the virtual directory
 	if (openhome) {
 		xmlfilenames.insert(xmlfilenames.end(), ohxmlfilenames.begin(),
