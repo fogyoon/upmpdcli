@@ -24,7 +24,7 @@
 #include <string>
 #include <iostream>
 #include <sstream>
-#include <fstream>
+//#include <fstream>
 #include <vector>
 #include <functional>
 #include <set>
@@ -139,6 +139,7 @@ static int op_flags;
 #define OPT_h	  0x2
 #define OPT_p	  0x4
 #define OPT_d	  0x8
+#define OPT_u	  0x9
 #define OPT_D     0x10
 #define OPT_c     0x20
 #define OPT_l     0x40
@@ -229,6 +230,7 @@ int main(int argc, char *argv[])
 			case 'c':	op_flags |= OPT_c; if (argc < 2)  Usage();
 				configfile = *(++argv); argc--; goto b1;
 			case 'D':	op_flags |= OPT_D; break;
+			case 'u':	op_flags |= OPT_u; break;
 			case 'd':	op_flags |= OPT_d; if (argc < 2)  Usage();
 				logfilename = *(++argv); argc--; goto b1;
 			case 'f':	op_flags |= OPT_f; if (argc < 2)  Usage();
@@ -398,10 +400,16 @@ int main(int argc, char *argv[])
 	// Create unique ID
 	string UUID = LibUPnP::makeDevUUID(friendlyname, hwaddr);
 
+	// print uuid
+	if ((op_flags & OPT_u)) {
+		cout << UUID;
+		return 0;
+	}
+
 	// make uuid file
-	ofstream SaveFile("/tmp/upmpdcliuuid");
-	SaveFile << UUID;
-	SaveFile.close();
+	//ofstream SaveFile("/tmp/upmpdcliuuid");
+	//SaveFile << UUID;
+	//SaveFile.close();
 
 	// Read our XML data to make it available from the virtual directory
 	if (openhome) {
