@@ -139,7 +139,6 @@ static int op_flags;
 #define OPT_h	  0x2
 #define OPT_p	  0x4
 #define OPT_d	  0x8
-#define OPT_u	  0x9
 #define OPT_D     0x10
 #define OPT_c     0x20
 #define OPT_l     0x40
@@ -148,6 +147,7 @@ static int op_flags;
 #define OPT_i     0x200
 #define OPT_P     0x400
 #define OPT_O     0x800
+#define OPT_u	  0x1000
 
 static const char usage[] = 
 "-c configfile \t configuration file to use\n"
