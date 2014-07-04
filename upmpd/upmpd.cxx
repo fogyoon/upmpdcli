@@ -305,7 +305,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 	upnppdebug::Logger::getTheLog("")->setLogLevel(upnppdebug::Logger::LogLevel(loglevel));
-
+	
+	MPDCli *mpdclip = 0;
 	if (!(op_flags & OPT_u)) {
 	
 		Pidfile pidfile(pidfilename);
@@ -354,25 +355,24 @@ int main(int argc, char *argv[])
 				return 1;
 			}
 		}
-	}
 	
-	// Initialize MPD client object. Retry until it works or power fail.
-	MPDCli *mpdclip = 0;
-	int mpdretrysecs = 2;
-	for (;;) {
-		mpdclip = new MPDCli(mpdhost, mpdport, mpdpassword);
-		if (mpdclip == 0) {
-			LOGFAT("Can't allocate MPD client object" << endl);
-			return 1;
-		}
-		if (!mpdclip->ok()) {
-			LOGERR("MPD connection failed" << endl);
-			delete mpdclip;
-			mpdclip = 0;
-			sleep(mpdretrysecs);
-			mpdretrysecs = MIN(2*mpdretrysecs, 120);
-		} else {
-			break;
+		// Initialize MPD client object. Retry until it works or power fail.
+		int mpdretrysecs = 2;
+		for (;;) {
+			mpdclip = new MPDCli(mpdhost, mpdport, mpdpassword);
+			if (mpdclip == 0) {
+				LOGFAT("Can't allocate MPD client object" << endl);
+				return 1;
+			}
+			if (!mpdclip->ok()) {
+				LOGERR("MPD connection failed" << endl);
+				delete mpdclip;
+				mpdclip = 0;
+				sleep(mpdretrysecs);
+				mpdretrysecs = MIN(2*mpdretrysecs, 120);
+			} else {
+				break;
+			}
 		}
 	}
 
@@ -406,58 +406,55 @@ int main(int argc, char *argv[])
 	if ((op_flags & OPT_u)) {
 		cout << UUID;
 		return 0;
-	}
-	// make uuid file
-	//ofstream SaveFile("/tmp/upmpdcliuuid");
-	//SaveFile << UUID;
-	//SaveFile.close();
+	} else {
 	
-	// Read our XML data to make it available from the virtual directory
-	if (openhome) {
-		xmlfilenames.insert(xmlfilenames.end(), ohxmlfilenames.begin(),
-							ohxmlfilenames.end());
-	}
-
-	{
-		string protofile = path_cat(datadir, "protocolinfo.txt");
-		if (!read_protocolinfo(protofile, upmpdProtocolInfo)) {
-			LOGFAT("Failed reading protocol info from " << protofile << endl);
-			return 1;
+		// Read our XML data to make it available from the virtual directory
+		if (openhome) {
+			xmlfilenames.insert(xmlfilenames.end(), ohxmlfilenames.begin(),
+								ohxmlfilenames.end());
 		}
-	}
-			
-	string reason;
-	unordered_map<string, string> xmlfiles;
-	for (unsigned int i = 0; i < xmlfilenames.size(); i++) {
-		string filename = path_cat(datadir, xmlfilenames[i]);
-		string data;
-		if (!file_to_string(filename, data, &reason)) {
-			LOGFAT("Failed reading " << filename << " : " << reason << endl);
-			return 1;
-		}
-		if (i == 0) {
-			// Special for description: set UUID and friendlyname
-			data = regsub1("@UUID@", data, UUID);
-			data = regsub1("@FRIENDLYNAME@", data, friendlyname);
-			if (openhome) 
-				data = regsub1("@OPENHOME@", data, ohDesc);
-		}
-		xmlfiles[xmlfilenames[i]] = data;
-	}
-	unsigned int options = UpMpd::upmpdNone;
-	if (ownqueue)
-		options |= UpMpd::upmpdOwnQueue;
-	if (openhome)
-		options |= UpMpd::upmpdDoOH;
-	// Initialize the UPnP device object.
-	UpMpd device(string("uuid:") + UUID, friendlyname, 
-				 xmlfiles, mpdclip, options);
 
-	// And forever generate state change events.
-	LOGDEB("Entering event loop" << endl);
-	device.eventloop();
+		{
+			string protofile = path_cat(datadir, "protocolinfo.txt");
+			if (!read_protocolinfo(protofile, upmpdProtocolInfo)) {
+				LOGFAT("Failed reading protocol info from " << protofile << endl);
+				return 1;
+			}
+		}
+				
+		string reason;
+		unordered_map<string, string> xmlfiles;
+		for (unsigned int i = 0; i < xmlfilenames.size(); i++) {
+			string filename = path_cat(datadir, xmlfilenames[i]);
+			string data;
+			if (!file_to_string(filename, data, &reason)) {
+				LOGFAT("Failed reading " << filename << " : " << reason << endl);
+				return 1;
+			}
+			if (i == 0) {
+				// Special for description: set UUID and friendlyname
+				data = regsub1("@UUID@", data, UUID);
+				data = regsub1("@FRIENDLYNAME@", data, friendlyname);
+				if (openhome) 
+					data = regsub1("@OPENHOME@", data, ohDesc);
+			}
+			xmlfiles[xmlfilenames[i]] = data;
+		}
+		unsigned int options = UpMpd::upmpdNone;
+		if (ownqueue)
+			options |= UpMpd::upmpdOwnQueue;
+		if (openhome)
+			options |= UpMpd::upmpdDoOH;
+		// Initialize the UPnP device object.
+		UpMpd device(string("uuid:") + UUID, friendlyname, 
+					 xmlfiles, mpdclip, options);
 
-	return 0;
+		// And forever generate state change events.
+		LOGDEB("Entering event loop" << endl);
+		device.eventloop();
+
+		return 0;
+	}
 }
 
 /* Local Variables: */
